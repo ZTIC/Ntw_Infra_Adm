@@ -1,0 +1,17 @@
+all:
+  vars:
+    ansible_user: vagrant
+    ansible_ssh_private_key_file: .vagrant/machines/default/virtualbox/private_key
+    ansible_python_interpreter: /usr/bin/python3
+
+  hosts:
+    web01:
+      ansible_host: 192.168.56.101
+    web02:
+      ansible_host: 192.168.56.102
+    web03:
+      ansible_host: 192.168.56.103
+    app01:
+      ansible_host: 192.168.56.110
+    db01:
+      ansible_host: 192.168.56.120

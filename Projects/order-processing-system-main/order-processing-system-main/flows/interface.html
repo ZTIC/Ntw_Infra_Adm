@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Assistant - Sistema de Pedidos</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        
+        .chat-container {
+            display: flex;
+            height: 600px;
+        }
+        
+        .sidebar {
+            width: 300px;
+            background: #f8fafc;
+            padding: 20px;
+            border-right: 1px solid #e2e8f0;
+        }
+        
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8fafc;
+        }
+        
+        .message {
+            margin-bottom: 20px;
+            max-width: 80%;
+        }
+        
+        .user-message {
+            margin-left: auto;
+            background: #4f46e5;
+            color: white;
+            padding: 15px;
+            border-radius: 20px 20px 5px 20px;
+        }
+        
+        .bot-message {
+            background: white;
+            padding: 15px;
+            border-radius: 20px 20px 20px 5px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border: 1px solid #e2e8f0;
+        }
+        
+        .bot-message h4 {
+            color: #4f46e5;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .input-area {
+            padding: 20px;
+            border-top: 1px solid #e2e8f0;
+            background: white;
+        }
+        
+        .input-wrapper {
+            display: flex;
+            gap: 10px;
+        }
+        
+        input {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #4f46e5;
+        }
+        
+        button {
+            background: #4f46e5;
+            color: white;
+            border: none;
+            padding: 0 25px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #4338ca;
+        }
+        
+        .quick-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .quick-btn {
+            background: white;
+            border: 1px solid #4f46e5;
+            color: #4f46e5;
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s;
+        }
+        
+        .quick-btn:hover {
+            background: #4f46e5;
+            color: white;
+        }
+        
+        .system-info {
+            background: #dcfce7;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .system-info h3 {
+            color: #059669;
+            margin-bottom: 10px;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-online {
+            background: #10b981;
+        }
+        
+        .status-offline {
+            background: #ef4444;
+        }
+        
+        .typing-indicator {
+            display: none;
+            padding: 10px;
+            color: #6b7280;
+        }
+        
+        .typing-indicator span {
+            animation: typing 1.4s infinite;
+            display: inline-block;
+        }
+        
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-5px); }
+        }
+        
+        .markdown-content {
+            line-height: 1.6;
+        }
+        
+        .markdown-content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        
+        .markdown-content code {
+            background: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Order Assistant</h1>
+            <p>Assistente de IA para o Sistema de Processamento de Pedidos</p>
+        </div>
+        
+        <div class="chat-container">
+            <div class="sidebar">
+                <div class="system-info">
+                    <h3>📋 Sistema Ativo</h3>
+                    <p><span class="status-indicator status-online"></span> API: <span id="api-status">Verificando...</span></p>
+                    <p><span class="status-indicator status-online"></span> Database: <span id="db-status">Verificando...</span></p>
+                    <p><span class="status-indicator status-online"></span> Event Hub: <span id="eventhub-status">Verificando...</span></p>
+                </div>
+                
+                <h4>💡 Perguntas Rápidas</h4>
+                <div class="quick-actions">
+                    <button class="quick-btn" onclick="sendQuickQuestion('Quais são as estatísticas do sistema?')">📊 Estatísticas</button>
+                    <button class="quick-btn" onclick="sendQuickQuestion('Liste os últimos pedidos')">📝 Pedidos Recentes</button>
+                    <button class="quick-btn" onclick="sendQuickQuestion('Como funciona o sistema?')">❓ Como Funciona</button>
+                    <button class="quick-btn" onclick="sendQuickQuestion('Verifique a saúde do sistema')">🏥 Health Check</button>
+                </div>
+                
+                <h4>🔧 Exemplos de API</h4>
+                <div class="quick-actions">
+                    <button class="quick-btn" onclick="copyToClipboard('curl -X GET http://localhost/api/orders')">GET /api/orders</button>
+                    <button class="quick-btn" onclick="copyToClipboard('curl -X POST http://localhost/api/orders -H \\\"Content-Type: application/json\\\" -d \\'{\\\"customer_email\\\":\\\"test@example.com\\\",\\\"items\\\":[{\\\"product_id\\\":\\\"P001\\\",\\\"name\\\":\\\"Product A\\\",\\\"price\\\":29.99,\\\"quantity\\\":2}],\\\"shipping_address\\\":\\\"123 Main St\\\"}\\'')">POST /api/orders</button>
+                    <button class="quick-btn" onclick="copyToClipboard('curl -X GET http://localhost/api/stats')">GET /api/stats</button>
+                </div>
+            </div>
+            
+            <div class="chat-area">
+                <div class="chat-messages" id="chat-messages">
+                    <div class="message bot-message">
+                        <h4>🤖 Order Assistant</h4>
+                        <div class="markdown-content">
+                            Olá! Sou o **Order Assistant**, seu assistente de IA para o sistema de processamento de pedidos. 
+                            
+                            Posso ajudá-lo com:
+                            - 📊 **Estatísticas do sistema**
+                            - 🔍 **Buscar pedidos específicos**
+                            - 📝 **Listar pedidos recentes**
+                            - ⚡ **Verificar status dos serviços**
+                            - 💡 **Explicar como o sistema funciona**
+                            
+                            **Como usar:**
+                            1. Faça perguntas em linguagem natural
+                            2. Use os botões rápidos para ações comuns
+                            3. Consulte os exemplos de API
+                            
+                            *Tente perguntar: "Quantos pedidos temos hoje?" ou "Mostre as estatísticas"*
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="input-area">
+                    <div class="typing-indicator" id="typing-indicator">
+                        Order Assistant está digitando<span>.</span><span>.</span><span>.</span>
+                    </div>
+                    
+                    <div class="input-wrapper">
+                        <input type="text" 
+                               id="user-input" 
+                               placeholder="Digite sua pergunta sobre pedidos..."
+                               onkeypress="handleKeyPress(event)">
+                        <button onclick="sendMessage()">Enviar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const chatMessages = document.getElementById('chat-messages');
+        const userInput = document.getElementById('user-input');
+        const typingIndicator = document.getElementById('typing-indicator');
+        
+        // URLs da API
+        const API_URL = 'http://localhost/api';
+        const LANGFLOW_URL = 'http://localhost:7860/api/v1/chat';
+        
+        // Verificar status do sistema
+        async function checkSystemStatus() {
+            try {
+                // Verificar API
+                const apiResponse = await fetch(`${API_URL}/health`);
+                const apiData = await apiResponse.json();
+                document.getElementById('api-status').textContent = apiData.status === 'healthy' ? '✅ Online' : '❌ Offline';
+                
+                // Verificar database através da API
+                document.getElementById('db-status').textContent = apiData.checks?.database ? '✅ Online' : '❌ Offline';
+                
+                // Verificar Event Hub (se disponível)
+                document.getElementById('eventhub-status').textContent = 
+                    apiData.checks?.eventhub ? '✅ Online' : '⚠️ Não configurado';
+                    
+            } catch (error) {
+                console.error('Erro ao verificar status:', error);
+                document.getElementById('api-status').textContent = '❌ Offline';
+                document.getElementById('db-status').textContent = '❌ Offline';
+                document.getElementById('eventhub-status').textContent = '❌ Offline';
+            }
+        }
+        
+        // Enviar mensagem para o Langflow
+        async function sendMessage() {
+            const message = userInput.value.trim();
+            if (!message) return;
+            
+            // Adicionar mensagem do usuário
+            addMessage(message, 'user');
+            userInput.value = '';
+            
+            // Mostrar indicador de digitação
+            typingIndicator.style.display = 'block';
+            
+            try {
+                // Enviar para Langflow
+                const response = await fetch(LANGFLOW_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        session_id: 'order-assistant-session'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                // Esconder indicador
+                typingIndicator.style.display = 'none';
+                
+                // Adicionar resposta do bot
+                addMessage(data.response || data.message, 'bot');
+                
+            } catch (error) {
+                console.error('Erro:', error);
+                typingIndicator.style.display = 'none';
+                
+                // Fallback para API local se Langflow falhar
+                try {
+                    const fallbackResponse = await handleFallbackQuery(message);
+                    addMessage(fallbackResponse, 'bot');
+                } catch (fallbackError) {
+                    addMessage('Desculpe, estou tendo problemas para processar sua solicitação. Tente novamente.', 'bot');
+                }
+            }
+        }
+        
+        // Fallback para consultas diretas à API
+        async function handleFallbackQuery(query) {
+            const queryLower = query.toLowerCase();
+            
+            if (queryLower.includes('estatística') || queryLower.includes('stats')) {
+                const response = await fetch(`${API_URL}/stats`);
+                const stats = await response.json();
+                return `📊 **Estatísticas do Sistema:**\n\n` +
+                       `• **Total de Pedidos:** ${stats.total_orders}\n` +
+                       `• **Receita Total:** €${stats.total_revenue}\n` +
+                       `• **Pedidos Hoje:** ${stats.today_orders}\n` +
+                       `• **Distribuição por Status:** ${JSON.stringify(stats.status_distribution, null, 2)}`;
+                       
+            } else if (queryLower.includes('pedido') && queryLower.includes('ord-')) {
+                // Extrair ID do pedido
+                const orderId = query.match(/ORD-[A-Z0-9]+/i)?.[0];
+                if (orderId) {
+                    const response = await fetch(`${API_URL}/orders/${orderId}`);
+                    if (response.status === 200) {
+                        const order = await response.json();
+                        return `📦 **Pedido ${orderId}:**\n\n` +
+                               `• **Cliente:** ${order.customer_email}\n` +
+                               `• **Total:** €${order.total_amount}\n` +
+                               `• **Status:** ${order.status}\n` +
+                               `• **Criado em:** ${new Date(order.created_at).toLocaleString('pt-PT')}`;
+                    } else {
+                        return `Pedido ${orderId} não encontrado.`;
+                    }
+                }
+            } else if (queryLower.includes('saúde') || queryLower.includes('health')) {
+                const response = await fetch(`${API_URL}/health`);
+                const health = await response.json();
+                return `🏥 **Status do Sistema:** ${health.status}\n\n` +
+                       `• **API:** ${health.checks?.database ? '✅' : '❌'}\n` +
+                       `• **Database:** ${health.checks?.database ? '✅' : '❌'}\n` +
+                       `• **Event Hub:** ${health.checks?.eventhub ? '✅' : '⚠️'}`;
+            }
+            
+            return 'Posso ajudá-lo com estatísticas, busca de pedidos ou verificação do sistema. Que tipo de informação você precisa?';
+        }
+        
+        // Adicionar mensagem ao chat
+        function addMessage(text, sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}-message`;
+            
+            const content = document.createElement('div');
+            content.className = 'markdown-content';
+            
+            // Converter markdown básico
+            let htmlText = text
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/`(.*?)`/g, '<code>$1</code>')
+                .replace(/\n/g, '<br>');
+            
+            content.innerHTML = sender === 'bot' 
+                ? `<h4>🤖 Order Assistant</h4>${htmlText}`
+                : htmlText;
+            
+            messageDiv.appendChild(content);
+            chatMessages.appendChild(messageDiv);
+            
+            // Scroll para baixo
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        // Perguntas rápidas
+        function sendQuickQuestion(question) {
+            userInput.value = question;
+            sendMessage();
+        }
+        
+        // Copiar para clipboard
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Comando copiado para o clipboard!');
+            });
+        }
+        
+        // Tecla Enter para enviar
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+        
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', () => {
+            checkSystemStatus();
+            // Verificar status a cada 30 segundos
+            setInterval(checkSystemStatus, 30000);
+        });
+    </script>
+</body>
+</html>

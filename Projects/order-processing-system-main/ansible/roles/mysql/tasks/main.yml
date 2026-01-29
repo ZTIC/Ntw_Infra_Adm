@@ -1,0 +1,43 @@
+---
+- name: Install MySQL
+  apt:
+    name:
+      - mysql-server
+      - mysql-client
+    state: present
+
+- name: Start and enable MySQL service
+  systemd:
+    name: mysql
+    state: started
+    enabled: yes
+
+- name: Secure MySQL installation
+  mysql_secure_installation:
+    login_password: "{{ mysql_root_password }}"
+    login_user: root
+
+- name: Create application database
+  mysql_db:
+    name: "{{ mysql_database }}"
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+    state: present
+
+- name: Create application user
+  mysql_user:
+    name: "{{ mysql_user }}"
+    password: "{{ mysql_password }}"
+    priv: "{{ mysql_database }}.*:ALL"
+    host: "%"
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+    state: present
+
+- name: Import database schema
+  mysql_db:
+    name: "{{ mysql_database }}"
+    state: import
+    target: "../../../../database/schema.sql"
+    login_user: root
+    login_password: "{{ mysql_root_password }}"

@@ -1,0 +1,36 @@
+---
+- name: Deploy application
+  hosts: app_servers
+  become: yes
+  vars_files:
+    - ../group_vars/all.yml
+  
+  tasks:
+    - name: Copy application code
+      synchronize:
+        src: ../../../app/
+        dest: "{{ app_directory }}/app"
+        rsync_opts:
+          - "--exclude=node_modules"
+          - "--exclude=.git"
+
+    - name: Install dependencies
+      npm:
+        path: "{{ app_directory }}/app"
+        state: present
+        production: yes
+
+    - name: Create environment file
+      template:
+        src: ../../../.env.j2
+        dest: "{{ app_directory }}/app/.env"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+
+    - name: Start application with PM2
+      command: pm2 start {{ app_directory }}/app/server.js --name "order-system"
+      args:
+        chdir: "{{ app_directory }}/app"
+
+    - name: Save PM2 process list
+      command: pm2 save

@@ -1,0 +1,36 @@
+---
+- name: Setup all servers
+  hosts: all_servers
+  become: yes
+  vars_files:
+    - ../group_vars/all.yml
+  
+  roles:
+    - common
+    - docker
+
+- name: Setup web servers
+  hosts: web_servers
+  become: yes
+  
+  roles:
+    - nginx
+
+- name: Setup application server
+  hosts: app_servers
+  become: yes
+  
+  roles:
+    - nodejs
+
+- name: Setup database server
+  hosts: database_servers
+  become: yes
+  vars:
+    mysql_root_password: "{{ vault_mysql_root_password }}"
+    mysql_database: order_management
+    mysql_user: oms_user
+    mysql_password: "{{ vault_mysql_password }}"
+  
+  roles:
+    - mysql
