@@ -17,6 +17,8 @@
       - apt-transport-https
       - ca-certificates
       - gnupg-agent
+      - python3-pip
+      - rsync
     state: present
 
 - name: Set timezone
@@ -28,6 +30,11 @@
     name: "{{ locale }}"
     state: present
 
+- name: Create application group
+  group:
+    name: "{{ app_group }}"
+    state: present
+
 - name: Create application user
   user:
     name: "{{ app_user }}"
@@ -36,7 +43,7 @@
     create_home: yes
     shell: /bin/bash
 
-- name: Create directories
+- name: Create application directories
   file:
     path: "{{ item }}"
     state: directory
@@ -47,15 +54,23 @@
     - "{{ app_directory }}"
     - "{{ docker_directory }}"
     - "{{ logs_directory }}"
+    - "{{ backup_directory }}"
 
-- name: Configure firewall
+- name: Configure firewall - Allow SSH
+  ufw:
+    rule: allow
+    port: 22
+    proto: tcp
+
+- name: Configure firewall - Allow HTTP/HTTPS
   ufw:
     rule: allow
     port: "{{ item }}"
     proto: tcp
   loop:
-    - 22    # SSH
-    - 80    # HTTP
-    - 443   # HTTPS
-    - 3000  # App
-    - 3306  # MySQL
+    - 80
+    - 443
+
+- name: Enable firewall
+  ufw:
+    state: enabled

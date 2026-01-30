@@ -1,0 +1,41 @@
+---
+# Sistema
+timezone: Europe/Lisbon
+locale: pt_PT.UTF-8
+
+# Aplicação
+app_name: order-processing-system
+app_version: "1.0.0"
+app_user: oms
+app_group: oms
+app_directory: /opt/oms
+app_port: 3000
+project_name: oms
+node_env: development
+
+# Diretórios
+docker_directory: /opt/oms/docker
+logs_directory: /var/log/oms
+backup_directory: /backup/oms
+
+# MySQL
+mysql_root_password: root123
+mysql_database: order_management
+mysql_user: ztic
+mysql_password: root123
+
+# Traefik
+traefik_host: oms.local
+
+# Langflow
+langflow_password: admin123
+openai_api_key: ""
+
+# Event Hub (opcional)
+eventhub_connection_string: ""
+eventhub_name: orders
+eventhub_namespace: oms-eventhub-dev
+
+# Docker
+docker_users:
+  - "{{ app_user }}"

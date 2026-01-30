@@ -205,3 +205,6 @@ settings.local.json
 
 #unamede 
 .oh-my-zsh
+
+#grafana
+configs/grafana

@@ -1,19 +1,20 @@
 FROM nginx:alpine
 
-# Remover configuração padrão
-RUN rm /etc/nginx/conf.d/default.conf
+# Instalar gettext para envsubst
+RUN apk add --no-cache gettext
 
-# Copiar configurações
-COPY configs/nginx/nginx.conf /etc/nginx/nginx.conf
-COPY configs/nginx/default.conf.template /etc/nginx/conf.d/default.conf.template
+# Copiar template
+COPY configs/nginx/nginx.conf.template /etc/nginx/nginx.conf.template
 
 # Script de inicialização
-COPY configs/nginx/start.sh /start.sh
+COPY <<'EOF' /start.sh
+#!/bin/sh
+envsubst '${SERVER_NAME} ${UPSTREAM_SERVICE} ${UPSTREAM_PORT}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
+nginx -g 'daemon off;'
+EOF
+
 RUN chmod +x /start.sh
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost/health || exit 1
-
 EXPOSE 80
+
 CMD ["/start.sh"]

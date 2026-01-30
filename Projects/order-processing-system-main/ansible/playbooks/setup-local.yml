@@ -1,0 +1,80 @@
+---
+- name: Setup Local Development Environment
+  hosts: localhost
+  connection: local
+  become: yes
+  vars_files:
+    - ../inventory/group_vars/all.yml
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install system packages
+      apt:
+        name:
+          - curl
+          - wget
+          - git
+          - vim
+          - htop
+          - software-properties-common
+          - apt-transport-https
+          - ca-certificates
+          - gnupg
+          - python3-pip
+          - rsync
+        state: present
+
+    - name: Create application group
+      group:
+        name: "{{ app_group }}"
+        state: present
+
+    - name: Create application user
+      user:
+        name: "{{ app_user }}"
+        group: "{{ app_group }}"
+        system: yes
+        create_home: yes
+        shell: /bin/bash
+
+    - name: Add current user to app group
+      user:
+        name: "{{ ansible_user_id }}"
+        groups: "{{ app_group }}"
+        append: yes
+
+    - name: Create application directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: '0755'
+      loop:
+        - "{{ app_directory }}"
+        - "{{ docker_directory }}"
+        - "{{ logs_directory }}"
+        - "{{ backup_directory }}"
+
+  roles:
+    - docker
+
+  post_tasks:
+    - name: Display setup summary
+      debug:
+        msg:
+          - "========================================="
+          - "Local Development Setup Completed!"
+          - "========================================="
+          - "App Directory: {{ app_directory }}"
+          - "Logs Directory: {{ logs_directory }}"
+          - "Docker installed and ready"
+          - "========================================="
+          - "Next steps:"
+          - "  1. Run: ansible-playbook playbooks/deploy-docker.yml"
+          - "  2. Access: http://localhost"
+          - "========================================="

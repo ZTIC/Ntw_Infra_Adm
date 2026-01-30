@@ -1,0 +1,35 @@
+# 1. Instalar Ansible
+sudo apt update
+sudo apt install -y ansible
+
+# 2. Instalar dependências do Ansible
+ansible-galaxy collection install community.docker
+
+# 3. Testar conectividade
+cd ansible/
+ansible all -m ping
+
+# 4. Setup inicial (instala Docker, cria usuários, etc)
+make setup
+# OU
+cd ansible && ansible-playbook playbooks/setup-local.yml
+
+# 5. Deploy da aplicação
+make deploy
+# OU
+cd ansible && ansible-playbook playbooks/deploy-docker.yml
+
+# 6. Ver status
+make status
+
+# 7. Ver logs
+make logs
+
+# 8. Reiniciar
+make restart
+
+# 9. Limpar (manter volumes)
+make clean
+
+# 10. Limpar tudo (remove volumes e dados)
+make clean-all

@@ -1,0 +1,36 @@
+---
+- name: Clean Local Environment
+  hosts: localhost
+  connection: local
+  become: yes
+  vars_files:
+    - ../inventory/group_vars/all.yml
+
+  tasks:
+    - name: Stop all containers
+      command: docker-compose down -v
+      args:
+        chdir: "{{ app_directory }}"
+      ignore_errors: yes
+
+    - name: Remove all containers
+      command: docker container prune -f
+      ignore_errors: yes
+
+    - name: Remove all volumes
+      command: docker volume prune -f
+      when: clean_all | default(false)
+
+    - name: Remove all images
+      command: docker image prune -af
+      when: clean_all | default(false)
+
+    - name: Remove application directory
+      file:
+        path: "{{ app_directory }}"
+        state: absent
+      when: clean_all | default(false)
+
+    - name: Clean completed
+      debug:
+        msg: "Environment cleaned successfully!"

@@ -1,44 +1,53 @@
-networks:
-  oms_infra:
-    driver: bridge
-  # frontend:
-  #   driver: bridge
-  # monitoring:
-  #   driver: bridge
-
-volumes:
-  mysql_data:
-  app_node_modules:
-  langflow_data:
-  traefik_certs:
-  # grafana_data:
-  # prometheus_data:
-  # letsencrypt:
 
 services:
+
+  # ============ TRAEFIK LOAD BALANCER ============
+  traefik:
+    build:
+      context: .
+      dockerfile: dockerfiles/traefik.Dockerfile
+    container_name: oms-traefik
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./configs/traefik/traefik.yml:/etc/traefik/traefik.yml
+      - ./configs/traefik/dynamic.yml:/etc/traefik/dynamic.yml
+      - traefik_certs:/letsencrypt
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.${TRAEFIK_HOST:-oms.local}`)"
+      - "traefik.http.routers.traefik.service=api@internal"
+
+    restart: unless-stopped
+
   # ============ MYSQL DATABASE ============
   mysql:
     build:
       context: .
       dockerfile: dockerfiles/mysql.Dockerfile
     container_name: oms-mysql
-    restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root123}
       MYSQL_DATABASE: ${DB_NAME:-order_management}
-      MYSQL_USER: ${DB_USER:-root}
+      MYSQL_USER: ${DB_USER:-ztic}
       MYSQL_PASSWORD: ${DB_PASSWORD:-root123}
     volumes:
       - mysql_data:/var/lib/mysql
       - ./configs/mysql/my.cnf:/etc/mysql/conf.d/custom.cnf:ro
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
-    networks:
-      - oms_infra
+      # - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "3306:3306"
+
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
       timeout: 5s
       retries: 3
+    
+    restart: unless-stopped
 
   # ============ NODE.JS APPLICATION ============
   app:
@@ -46,7 +55,6 @@ services:
       context: ./app
       dockerfile: ../dockerfiles/app.Dockerfile
     container_name: oms-app
-    restart: unless-stopped
     depends_on:
       mysql:
         condition: service_healthy
@@ -56,7 +64,7 @@ services:
       DB_HOST: mysql
       DB_PORT: 3306
       DB_NAME: ${DB_NAME:-order_management}
-      DB_USER: ${DB_USER:-root}
+      DB_USER: ${DB_USER:-ztic}
       DB_PASSWORD: ${DB_PASSWORD:-root123}
       EVENTHUB_CONNECTION_STRING: ${EVENTHUB_CONNECTION_STRING}
       EVENTHUB_NAME: ${EVENTHUB_NAME:-orders}
@@ -64,8 +72,7 @@ services:
     volumes:
       - ./app:/app
       - app_node_modules:/app/node_modules
-    networks:
-      - oms_infra
+
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
       interval: 30s
@@ -73,14 +80,16 @@ services:
       retries: 3
     labels:
       - "traefik.enable=false"
+    
+    restart: unless-stopped
 
   # ============ NGINX SERVERS ============
+    # ... (nginx1)
   nginx1:
     build:
       context: .
       dockerfile: dockerfiles/nginx.Dockerfile
     container_name: oms-nginx-1
-    restart: unless-stopped
     depends_on:
       - app
     environment:
@@ -89,12 +98,14 @@ services:
       UPSTREAM_PORT: 3000
     volumes:
       - ./configs/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-    networks:
-      - oms_infra
+    ports:
+      - "8091:80"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.app.rule=Host(`${TRAEFIK_HOST:-oms.local}`)"
       - "traefik.http.services.app.loadbalancer.server.port=80"
+    
+    restart: unless-stopped
 
   # ... (nginx2)
   nginx2:
@@ -102,7 +113,6 @@ services:
       context: .
       dockerfile: dockerfiles/nginx.Dockerfile
     container_name: oms-nginx-2
-    restart: unless-stopped
     depends_on:
       - app
     environment:
@@ -111,12 +121,14 @@ services:
       UPSTREAM_PORT: 3000
     volumes:
       - ./configs/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-    networks:
-      - oms_infra
+    ports:
+      - "8092:80"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.app.rule=Host(`${TRAEFIK_HOST:-oms.local}`)"
       - "traefik.http.services.app.loadbalancer.server.port=80"
+
+    restart: unless-stopped
 
   # ... (nginx3)
   nginx3:
@@ -124,7 +136,6 @@ services:
       context: .
       dockerfile: dockerfiles/nginx.Dockerfile
     container_name: oms-nginx-3
-    restart: unless-stopped
     depends_on:
       - app
     environment:
@@ -132,37 +143,16 @@ services:
       UPSTREAM_SERVICE: app
       UPSTREAM_PORT: 3000
     volumes:
-      - ./configs/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-    networks:
-      - oms_infra
+      - ./configs/nginx/nginx.conf.template:/etc/nginx/nginx.conf.template:ro
+
+    ports:
+      - "8093:80"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.app.rule=Host(`${TRAEFIK_HOST:-oms.local}`)"
       - "traefik.http.services.app.loadbalancer.server.port=80"
 
-  # ============ TRAEFIK LOAD BALANCER ============
-  traefik:
-    build:
-      context: .
-      dockerfile: dockerfiles/traefik.Dockerfile
-    container_name: oms-traefik
     restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-      - "8080:8080"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./configs/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
-      - ./configs/traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
-      - traefik_certs:/letsencrypt
-    networks:
-      - oms_infra
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.traefik.rule=Host(`traefik.${TRAEFIK_HOST:-oms.local}`)"
-      - "traefik.http.routers.traefik.service=api@internal"
-
 
   # ============ LANGFLOW AI AGENT ============
   langflow:
@@ -179,8 +169,10 @@ services:
     volumes:
       - langflow_data:/app/langflow
       - ./flows:/app/flows
-    networks:
-      - oms_infra
+    
+    ports:
+      - 7860:7860
+
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.langflow.rule=Host(`ai.${TRAEFIK_HOST:-oms.local}`)"
@@ -196,12 +188,28 @@ services:
     volumes:
       - ./flows/interface.html:/usr/share/nginx/html/index.html:ro
       - ./flows/custom_tools.py:/usr/share/nginx/html/custom_tools.py:ro
-    networks:
-      - oms_infra
+
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.web-interface.rule=Host(`assistant.${TRAEFIK_HOST:-oms.local}`)"
       - "traefik.http.services.web-interface.loadbalancer.server.port=80"
+      
+# networks:
+#   oms_infra:
+#     driver: bridge
+  # frontend:
+  #   driver: bridge
+  # monitoring:
+  #   driver: bridge
+
+volumes:
+  mysql_data:
+  app_node_modules:
+  langflow_data:
+  traefik_certs:
+  # grafana_data:
+  # prometheus_data:
+  # letsencrypt:
   # ============ PROMETHEUS (MONITORING) ============
   # prometheus:
   #   image: prom/prometheus:latest
@@ -243,3 +251,4 @@ services:
   #     - "traefik.enable=true"
   #     - "traefik.http.routers.grafana.rule=Host(`grafana.${TRAEFIK_HOST:-oms.local}`)"
   #     - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+  

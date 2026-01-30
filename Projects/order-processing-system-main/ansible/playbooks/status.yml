@@ -1,0 +1,46 @@
+---
+- name: Check OMS Status
+  hosts: localhost
+  connection: local
+  become: yes
+  vars_files:
+    - ../inventory/group_vars/all.yml
+
+  tasks:
+    - name: Check Docker service
+      systemd:
+        name: docker
+      register: docker_status
+
+    - name: Get running containers
+      command: docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+      register: containers
+      changed_when: false
+
+    - name: Display container status
+      debug:
+        var: containers.stdout_lines
+
+    - name: Check disk usage
+      command: df -h {{ app_directory }}
+      register: disk_usage
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Display disk usage
+      debug:
+        var: disk_usage.stdout_lines
+      when: disk_usage is defined
+
+    - name: Get Docker Compose status
+      command: docker-compose ps
+      args:
+        chdir: "{{ app_directory }}"
+      register: compose_status
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Display compose status
+      debug:
+        var: compose_status.stdout_lines
+      when: compose_status is defined

@@ -1,5 +1,0 @@
----
-vault_db_password: "oms123"
-vault_mysql_root_password: "root123"
-vault_eventhub_connection_string: "{{ EVENTHUB_CONNECTION_STRING }}"
-vault_openai_api_key: "{{ OPENAI_API_KEY }}"

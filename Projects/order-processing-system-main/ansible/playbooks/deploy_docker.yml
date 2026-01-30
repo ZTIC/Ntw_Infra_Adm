@@ -1,0 +1,110 @@
+---
+- name: Deploy OMS with Docker Compose (Local)
+  hosts: localhost
+  connection: local
+  become: yes
+  vars_files:
+    - ../inventory/group_vars/all.yml
+
+  vars:
+    project_root: "{{ playbook_dir }}/../../"
+
+  tasks:
+    - name: Ensure Docker is running
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Copy project files to app directory
+      synchronize:
+        src: "{{ project_root }}"
+        dest: "{{ app_directory }}/"
+        delete: no
+        rsync_opts:
+          - "--exclude=.git"
+          - "--exclude=node_modules"
+          - "--exclude=*.log"
+          - "--exclude=ansible"
+
+    - name: Create .env file
+      template:
+        src: ../templates/env.j2
+        dest: "{{ app_directory }}/.env"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: '0600'
+
+    - name: Set correct permissions
+      file:
+        path: "{{ app_directory }}"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        recurse: yes
+
+    - name: Stop existing containers
+      community.docker.docker_compose:
+        project_src: "{{ app_directory }}"
+        state: absent
+      ignore_errors: yes
+
+    - name: Remove old volumes (optional - careful!)
+      command: docker volume prune -f
+      when: clean_volumes | default(false)
+
+    - name: Start Docker Compose services
+      community.docker.docker_compose:
+        project_src: "{{ app_directory }}"
+        build: yes
+        pull: yes
+        state: present
+      register: docker_output
+
+    - name: Wait for services to be healthy
+      pause:
+        seconds: 30
+
+    - name: Check service status
+      command: docker-compose ps
+      args:
+        chdir: "{{ app_directory }}"
+      register: compose_status
+      changed_when: false
+
+    - name: Display service status
+      debug:
+        var: compose_status.stdout_lines
+
+    - name: Verify Traefik is running
+      uri:
+        url: http://localhost:8080/api/health
+        status_code: 200
+      retries: 5
+      delay: 5
+      ignore_errors: yes
+
+    - name: Verify Application is running
+      uri:
+        url: http://localhost:8091/health
+        status_code: 200
+      retries: 10
+      delay: 5
+      ignore_errors: yes
+
+    - name: Display deployment summary
+      debug:
+        msg:
+          - "========================================="
+          - "OMS Deployment Completed!"
+          - "========================================="
+          - "Services running:"
+          - "  - Traefik Dashboard: http://localhost:8080"
+          - "  - Application (NGINX-1): http://localhost:8091"
+          - "  - Application (NGINX-2): http://localhost:8092"
+          - "  - Application (NGINX-3): http://localhost:8093"
+          - "  - MySQL: localhost:3306"
+          - "  - Langflow: http://localhost:7860"
+          - "  - Web Interface: http://localhost:8081"
+          - "========================================="
+          - "Logs: docker-compose -f {{ app_directory }}/docker-compose.yml logs -f"
+          - "========================================="
